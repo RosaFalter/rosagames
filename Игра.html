@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=300, initial-scale=1.0">
+  <title>Ну, погоди! — Игра</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    canvas { border: 2px solid #000; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Ну, погоди! — Поймай яйцо</h1>
+  <canvas id="gameCanvas" width="300" height="400"></canvas>
+  <div id="scoreDisplay">Поймано: 0 | Пропуск: 0</div>
+  <p>Управление: стрелки на клавиатуре</p>
+  <div id="gameOverMessage" style="display:none; font-size: 20px; color: red; margin-top: 10px;"></div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    let score = 0;
+    let missed = 0;
+    let wolfPosition = "bottomLeft";
+    const eggPositions = ["topLeft", "topRight"];
+    let fallingEgg = null;
+    let gameOver = false;
+    let eggSpeed = 2;
+    let fadingEggs = [];
+
+    const background = new Image();
+    background.src = 'https://img.freepik.com/premium-vector/vintage-floral-pattern-floral-seamless-pattern_29654-88.jpg?w=740';
+
+    const wolfImg = new Image();
+    wolfImg.src = 'https://i.postimg.cc/3w7qr3hk/1.png';
+
+    const eggImg = new Image();
+    eggImg.src = 'https://i.postimg.cc/L5n9yz0F/free-icon-easter-egg-4184990.png';
+
+    function getCoords(position) {
+      switch (position) {
+        case "topLeft": return { x: 50, y: 0 };
+        case "topRight": return { x: 200, y: 0 };
+        case "bottomLeft": return { x: 50, y: 300 };
+        case "bottomRight": return { x: 200, y: 300 };
+        default: return { x: 0, y: 0 };
+      }
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") wolfPosition = "bottomLeft";
+      if (e.key === "ArrowRight") wolfPosition = "bottomRight";
+    });
+
+    function dropEgg() {
+      const position = eggPositions[Math.floor(Math.random() * eggPositions.length)];
+      fallingEgg = { position, x: getCoords(position).x + 10, y: 0, speed: eggSpeed, caught: false };
+    }
+
+    function drawWolf(position) {
+      const coords = getCoords(position);
+      const shouldFlip = position === "bottomRight";
+
+      ctx.save();
+      if (shouldFlip) {
+        ctx.translate(coords.x + 50, coords.y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(wolfImg, 0, -20, 100, 100);
+      } else {
+        ctx.drawImage(wolfImg, coords.x, coords.y - 20, 100, 100);
+      }
+      ctx.restore();
+    }
+
+    function updateGame() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+      drawWolf(wolfPosition);
+
+      if (fallingEgg) {
+        fallingEgg.y += fallingEgg.speed;
+        if (!fallingEgg.caught) {
+          ctx.drawImage(eggImg, fallingEgg.x, fallingEgg.y, 40, 40);
+        }
+
+        if (fallingEgg.y >= getCoords("bottomLeft").y + 20) {
+          if ((fallingEgg.position.includes("Left") && wolfPosition.includes("Left")) ||
+              (fallingEgg.position.includes("Right") && wolfPosition.includes("Right"))) {
+            score++;
+            eggSpeed += 1; // Увеличиваем скорость на 1 при ловле яйца
+            fadingEggs.push({ x: fallingEgg.x, y: fallingEgg.y, opacity: 1.0 });
+          } else {
+            missed++;
+            eggSpeed += 2;
+            if (missed >= 10) {
+              gameOver = true;
+              document.getElementById("gameOverMessage").textContent = "Ты проиграла, подруга!";
+              document.getElementById("gameOverMessage").style.display = "block";
+              return;
+            }
+          }
+          document.getElementById("scoreDisplay").textContent = `Поймано: ${score} | Пропуск: ${missed}`;
+          fallingEgg = null;
+        }
+      }
+
+      for (let i = 0; i < fadingEggs.length; i++) {
+        let egg = fadingEggs[i];
+        egg.opacity -= 0.05;
+        if (egg.opacity > 0) {
+          ctx.globalAlpha = egg.opacity;
+          ctx.drawImage(eggImg, egg.x, egg.y, 40, 40);
+          ctx.globalAlpha = 1.0;
+        } else {
+          fadingEggs.splice(i, 1);
+          i--;
+        }
+      }
+    }
+
+    setInterval(updateGame, 50);
+    setInterval(() => {
+      if (!fallingEgg && !gameOver) dropEgg();
+    }, 2000);
+  </script>
+</body>
+</html>
